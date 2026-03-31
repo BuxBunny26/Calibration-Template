@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase, supabaseConfigured } from './services/supabase';
-import { generateCertificate } from './services/api';
+import { processGroup } from './services/generateReport';
 import Header from './components/Header';
 import FileUpload from './components/FileUpload';
 import History from './components/History';
@@ -156,8 +156,12 @@ function App() {
         const key = groupKeys[i];
         setGeneratingProgress({ current: i + 1, total, currentGroup: key });
         const groupFiles = groups[key].map(f => f.file);
-        const data = await generateCertificate(groupFiles);
-        allResults.push(...(data.results || []));
+        try {
+          const result = await processGroup(groupFiles);
+          allResults.push({ ...result, group: key });
+        } catch (e) {
+          allResults.push({ status: 'failed', group: key, error: e.message });
+        }
       }
 
       const completed = allResults.filter(r => r.status === 'completed');
@@ -225,9 +229,13 @@ function App() {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       for (const r of success.results) {
-        const resp = await fetch(r.download_url);
-        const blob = await resp.blob();
-        zip.file(r.output_file_name, blob);
+        if (r._pdfBytes) {
+          zip.file(r.output_file_name, r._pdfBytes);
+        } else {
+          const resp = await fetch(r.download_url);
+          const blob = await resp.blob();
+          zip.file(r.output_file_name, blob);
+        }
       }
       const content = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(content);
