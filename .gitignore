@@ -1,0 +1,23 @@
+# Backend
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+
+# Data & temp files
+*.tmp
+temp/
+
+# OS
+.DS_Store
+Thumbs.db

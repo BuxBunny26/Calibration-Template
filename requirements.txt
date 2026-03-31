@@ -1,0 +1,7 @@
+flask>=3.0
+flask-cors>=4.0
+gunicorn>=21.2
+openpyxl>=3.1
+reportlab>=4.0
+PyPDF2>=3.0
+supabase>=2.0
