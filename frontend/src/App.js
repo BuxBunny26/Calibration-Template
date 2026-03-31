@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { supabase } from './services/supabase';
+import { supabase, supabaseConfigured } from './services/supabase';
 import { generateCertificate } from './services/api';
 import Header from './components/Header';
 import FileUpload from './components/FileUpload';
@@ -17,7 +17,7 @@ function App() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
   const [generatingProgress, setGeneratingProgress] = useState(null);
   const [toast, setToast] = useState(null);
-  const [supabaseOnline, setSupabaseOnline] = useState(true);
+  const [supabaseOnline, setSupabaseOnline] = useState(supabaseConfigured);
 
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -25,21 +25,6 @@ function App() {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
-
-  useEffect(() => {
-    const checkSupabase = async () => {
-      try {
-        const url = process.env.REACT_APP_SUPABASE_URL;
-        if (!url) { setSupabaseOnline(false); return; }
-        const res = await fetch(`${url}/rest/v1/`, {
-          method: 'HEAD',
-          headers: { apikey: process.env.REACT_APP_SUPABASE_ANON_KEY },
-        });
-        setSupabaseOnline(res.ok);
-      } catch { setSupabaseOnline(false); }
-    };
-    checkSupabase();
-  }, []);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
