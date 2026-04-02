@@ -108,8 +108,10 @@ export async function processGroup(groupFiles) {
   // Upload to Supabase if configured
   let downloadUrl = null;
   if (supabaseConfigured) {
+    const remotePath = `certificates/${jobId}/${outputName}`;
+
+    // Try storage upload (non-blocking)
     try {
-      const remotePath = `certificates/${jobId}/${outputName}`;
       const { error: uploadErr } = await supabase.storage
         .from('calibration-files')
         .upload(remotePath, new Blob([finalBytes], { type: 'application/pdf' }), {
@@ -123,8 +125,12 @@ export async function processGroup(groupFiles) {
           .getPublicUrl(remotePath);
         downloadUrl = data?.publicUrl || null;
       }
+    } catch (e) {
+      console.warn('Supabase storage upload failed:', e);
+    }
 
-      // Save job record
+    // Save job record (even if storage failed)
+    try {
       await supabase.from('certificate_jobs').upsert({
         id: jobId,
         status: 'completed',
@@ -141,7 +147,7 @@ export async function processGroup(groupFiles) {
         completed_at: new Date().toISOString(),
       });
     } catch (e) {
-      console.warn('Supabase upload/save failed:', e);
+      console.warn('Supabase job record save failed:', e);
     }
   }
 
