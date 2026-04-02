@@ -100,81 +100,132 @@ def _num(ws, row, col, decimals=2):
 def read_vib_analyzer(filepath):
     """Return dict with all relevant Vib Analyzer Cert/Data fields."""
     wb = openpyxl.load_workbook(filepath, data_only=True, keep_vba=True)
-    cert = wb["Vib Analyzer Cert"]
+    cert = wb["Vib Analyzer Cert"] if "Vib Analyzer Cert" in wb.sheetnames else None
     data = wb["Vib Analyzer Data"] if "Vib Analyzer Data" in wb.sheetnames else None
+
+    if not data and not cert:
+        wb.close()
+        raise ValueError("Neither 'Vib Analyzer Data' nor 'Vib Analyzer Cert' found")
+
+    # Prefer Data sheet (has actual values); Cert has formulas that may lack cached results
+    src = data or cert
+
+    # Lookup tables for coded fields on the Data sheet
+    MODE_MAP = {"1": "Spectra", "2": "Overall", "3": "Time waveform"}
+    FREQ_UNIT_MAP = {"1": "Hz", "2": "CPM"}
+    WINDOW_MAP = {"1": "Hanning", "2": "Hamming", "3": "Flattop", "4": "Uniform"}
+    SENS_UNIT_MAP = {"1": "mV/EU", "2": "V/EU"}
 
     info = {}
 
-    # ── Analyzer / Meter Information ──
-    info["manufacturer"] = _val(cert, 5, 3)   # C5
-    info["model"]        = _val(cert, 6, 3)   # C6
-    info["serial"]       = _val(cert, 7, 3)   # C7
-    info["cal_tech"]     = _val(cert, 8, 3)   # C8
-    info["cal_date"]     = _val(cert, 9, 3)   # C9
-    info["cal_due"]      = _val(cert, 10, 3)  # C10
+    # ── Analyzer / Meter Information (same positions on both sheets) ──
+    info["manufacturer"] = _val(src, 5, 3)   # C5
+    info["model"]        = _val(src, 6, 3)   # C6
+    info["serial"]       = _val(src, 7, 3)   # C7
+    info["cal_tech"]     = _val(src, 8, 3)   # C8
+    info["cal_date"]     = _val(src, 9, 3)   # C9
+    info["cal_due"]      = _val(src, 10, 3)  # C10
 
     # ── Analyzer Settings ──
-    info["analyzer_mode"]  = _val(cert, 5, 8)   # H5
-    info["freq_max"]       = _val(cert, 6, 8)   # H6
-    info["freq_min"]       = _val(cert, 7, 8)   # H7
-    info["freq_unit"]      = _val(cert, 8, 8)   # H8
-    info["lines_resolution"] = _val(cert, 9, 8) # H9
-    info["avg_points"]     = _val(cert, 10, 8)  # H10
-    info["window_type"]    = _val(cert, 11, 8)  # H11
-    info["sensor_input_sens"] = _val(cert, 12, 8) # H12
-    info["sensor_input_unit"] = _val(cert, 12, 9) # I12
+    if data:
+        # Data sheet stores numeric codes for some fields; resolve them
+        mode_raw = _val(src, 5, 8)
+        info["analyzer_mode"] = MODE_MAP.get(mode_raw, mode_raw)
+        info["freq_max"]      = _val(src, 6, 8)
+        info["freq_min"]      = _val(src, 7, 8)
+        funit_raw = _val(src, 8, 8)
+        info["freq_unit"]     = FREQ_UNIT_MAP.get(funit_raw, funit_raw)
+        info["lines_resolution"] = _val(src, 9, 8)
+        info["avg_points"]    = _val(src, 10, 8)
+        win_raw = _val(src, 11, 8)
+        info["window_type"]   = WINDOW_MAP.get(win_raw, win_raw)
+        info["sensor_input_sens"] = _val(src, 12, 8)
+        sunit_raw = _val(src, 13, 8)
+        info["sensor_input_unit"] = SENS_UNIT_MAP.get(sunit_raw, sunit_raw)
+    else:
+        info["analyzer_mode"]  = _val(src, 5, 8)
+        info["freq_max"]       = _val(src, 6, 8)
+        info["freq_min"]       = _val(src, 7, 8)
+        info["freq_unit"]      = _val(src, 8, 8)
+        info["lines_resolution"] = _val(src, 9, 8)
+        info["avg_points"]     = _val(src, 10, 8)
+        info["window_type"]    = _val(src, 11, 8)
+        info["sensor_input_sens"] = _val(src, 12, 8)
+        info["sensor_input_unit"] = _val(src, 12, 9)
 
-    # ── Test type detection (J4 header) ──
-    test_header = _val(cert, 4, 10)  # J4
-    info["test_type"] = test_header  # e.g. "Linearity Test" or "Frequency Response Test"
+    # ── Test type detection (J4 header — on Cert sheet) ──
+    test_src = cert or src
+    test_header = _val(test_src, 4, 10)  # J4
+    info["test_type"] = test_header
 
-    # ── Test parameters (column L-M, rows 5-8) ──
+    # ── Test parameters (column L-M, rows 5-8 — on Cert sheet) ──
+    param_src = cert or src
     for r in range(5, 9):
-        label = _val(cert, r, 12)  # L column
-        value = _val(cert, r, 13)  # M column
+        label = _val(param_src, r, 12)
+        value = _val(param_src, r, 13)
         if label and value:
             info[f"test_param_{r}"] = (label, value)
 
     # ── Test Equipment ──
-    info["pvc_model"]      = _val(cert, 15, 3)   # C15
-    info["pvc_serial"]     = _val(cert, 15, 4)   # D15
-    info["pvc_cal_date"]   = _date_val(cert, 15, 6) # F15
-    info["pvc_sensitivity"] = _num(cert, 15, 8)   # H15
-    info["pvc_sens_unit"]  = _val(cert, 15, 9)    # I15
-    info["pvc_tolerance"]  = _num(cert, 15, 10)   # J15
-    info["pvc_deviation"]  = _num(cert, 15, 12)   # L15
+    if data:
+        # Data sheet: PVC at row 16, Sensor at row 17
+        # Sensitivity at col G(7), unit at H(8), tolerance at K(11)
+        info["pvc_model"]       = _val(src, 16, 3)
+        info["pvc_serial"]      = _val(src, 16, 4)
+        info["pvc_cal_date"]    = _date_val(src, 16, 6)
+        info["pvc_sensitivity"] = _num(src, 16, 7)
+        info["pvc_sens_unit"]   = _val(src, 16, 8)
+        info["pvc_tolerance"]   = _num(src, 16, 11)
+        info["pvc_deviation"]   = _num(src, 16, 12)
 
-    info["sensor_model"]     = _val(cert, 16, 3)
-    info["sensor_serial"]    = _val(cert, 16, 4)
-    info["sensor_cal_date"]  = _date_val(cert, 16, 6)
-    info["sensor_sensitivity"] = _num(cert, 16, 8)
-    info["sensor_sens_unit"] = _val(cert, 16, 9)
-    info["sensor_tolerance"] = _num(cert, 16, 10)
-    info["sensor_deviation"] = _num(cert, 16, 12)
+        info["sensor_model"]       = _val(src, 17, 3)
+        info["sensor_serial"]      = _val(src, 17, 4)
+        info["sensor_cal_date"]    = _date_val(src, 17, 6)
+        info["sensor_sensitivity"] = _num(src, 17, 7)
+        info["sensor_sens_unit"]   = _val(src, 17, 8)
+        info["sensor_tolerance"]   = _num(src, 17, 11)
+        info["sensor_deviation"]   = _num(src, 17, 12)
+    else:
+        info["pvc_model"]      = _val(src, 15, 3)
+        info["pvc_serial"]     = _val(src, 15, 4)
+        info["pvc_cal_date"]   = _date_val(src, 15, 6)
+        info["pvc_sensitivity"] = _num(src, 15, 8)
+        info["pvc_sens_unit"]  = _val(src, 15, 9)
+        info["pvc_tolerance"]  = _num(src, 15, 10)
+        info["pvc_deviation"]  = _num(src, 15, 12)
 
-    # ── Customer ──
-    info["customer"] = _val(cert, 33, 7)  # G33
+        info["sensor_model"]     = _val(src, 16, 3)
+        info["sensor_serial"]    = _val(src, 16, 4)
+        info["sensor_cal_date"]  = _date_val(src, 16, 6)
+        info["sensor_sensitivity"] = _num(src, 16, 8)
+        info["sensor_sens_unit"] = _val(src, 16, 9)
+        info["sensor_tolerance"] = _num(src, 16, 10)
+        info["sensor_deviation"] = _num(src, 16, 12)
+
+    # ── Customer (literal value on Cert sheet) ──
+    info["customer"] = _val(cert or src, 33, 7)  # G33
 
     # ── Data Table ──
+    data_src = cert or src
     data_rows = []
-    for r in range(34, cert.max_row + 1):
-        b = cert.cell(row=r, column=2).value
-        c = cert.cell(row=r, column=3).value
-        d = cert.cell(row=r, column=4).value
+    for r in range(34, data_src.max_row + 1):
+        b = data_src.cell(row=r, column=2).value
+        c = data_src.cell(row=r, column=3).value
+        d = data_src.cell(row=r, column=4).value
         if b is not None and c is not None:
             data_rows.append((b, c, d))
     info["data_table"] = data_rows
 
     # Data table column headers
-    info["data_col1"] = _val(cert, 33, 2)  # B33
-    info["data_col2"] = _val(cert, 33, 3)  # C33
-    info["data_col3"] = _val(cert, 33, 4)  # D33
+    info["data_col1"] = _val(data_src, 33, 2)  # B33
+    info["data_col2"] = _val(data_src, 33, 3)  # C33
+    info["data_col3"] = _val(data_src, 33, 4)  # D33
 
-    # ── Note ──
-    info["note"] = _val(cert, 41, 7)  # G41
+    # ── Note (literal value on Cert sheet) ──
+    info["note"] = _val(cert or src, 41, 7)  # G41
 
     # ── Max deviation (for Linearity test) ──
-    info["abs_max_deviation"] = _val(cert, 8, 13)  # M8 only for linearity
+    info["abs_max_deviation"] = _val(param_src, 8, 13)  # M8 only for linearity
 
     wb.close()
     return info
@@ -317,6 +368,29 @@ def build_field_table(fields, styles):
         else:
             row.extend(["", ""])
         rows.append(row)
+
+    t = Table(rows, colWidths=col_widths)
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+    ]))
+    return t
+
+
+def build_field_table_stacked(fields, styles):
+    """Full-width rows (one field per row) to avoid overlap with long values."""
+    total_w = PAGE_W - 2 * MARGIN
+    col_widths = [total_w * 0.18, total_w * 0.82]
+
+    rows = []
+    for label, value in fields:
+        rows.append([
+            Paragraph(label, styles["FieldLabel"]),
+            Paragraph(str(value), styles["FieldValue"]),
+        ])
 
     t = Table(rows, colWidths=col_widths)
     t.setStyle(TableStyle([
@@ -543,7 +617,7 @@ def generate_cover_page(info, output_path):
     if info.get("sensor_cal_date"):
         sensor_line += f", Cal: {info['sensor_cal_date']}"
 
-    elements.append(build_field_table([
+    elements.append(build_field_table_stacked([
         ("PVC:", pvc_line),
         ("Sensitivity:", f"{info.get('pvc_sensitivity', '')} {info.get('pvc_sens_unit', '')}"),
         ("Sensor:", sensor_line),

@@ -34,63 +34,109 @@ function num(ws, row, col, decimals = 2) {
 
 export function readVibAnalyzer(arrayBuffer) {
   const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+  const data = wb.Sheets['Vib Analyzer Data'];
   const cert = wb.Sheets['Vib Analyzer Cert'];
-  if (!cert) throw new Error('Sheet "Vib Analyzer Cert" not found in workbook');
+  if (!data && !cert) throw new Error('Neither "Vib Analyzer Data" nor "Vib Analyzer Cert" sheet found');
+
+  // Prefer Data sheet (has actual values); Cert sheet has formulas that may not be cached
+  const src = data || cert;
+
+  // Lookup tables for coded fields on the Data sheet
+  const MODE_MAP = { '1': 'Spectra', '2': 'Overall', '3': 'Time waveform' };
+  const FREQ_UNIT_MAP = { '1': 'Hz', '2': 'CPM' };
+  const WINDOW_MAP = { '1': 'Hanning', '2': 'Hamming', '3': 'Flattop', '4': 'Uniform' };
+  const SENS_UNIT_MAP = { '1': 'mV/EU', '2': 'V/EU' };
 
   const info = {};
 
-  // Analyzer / Meter Information
-  info.manufacturer = val(cert, 5, 3);
-  info.model = val(cert, 6, 3);
-  info.serial = val(cert, 7, 3);
-  info.cal_tech = val(cert, 8, 3);
-  info.cal_date = val(cert, 9, 3);
-  info.cal_due = val(cert, 10, 3);
+  // Analyzer / Meter Information (same positions on both sheets)
+  info.manufacturer = val(src, 5, 3);
+  info.model = val(src, 6, 3);
+  info.serial = val(src, 7, 3);
+  info.cal_tech = val(src, 8, 3);
+  info.cal_date = val(src, 9, 3);
+  info.cal_due = val(src, 10, 3);
 
   // Analyzer Settings
-  info.analyzer_mode = val(cert, 5, 8);
-  info.freq_max = val(cert, 6, 8);
-  info.freq_min = val(cert, 7, 8);
-  info.freq_unit = val(cert, 8, 8);
-  info.lines_resolution = val(cert, 9, 8);
-  info.avg_points = val(cert, 10, 8);
-  info.window_type = val(cert, 11, 8);
-  info.sensor_input_sens = val(cert, 12, 8);
-  info.sensor_input_unit = val(cert, 12, 9);
+  if (data) {
+    // Data sheet stores numeric codes for some fields
+    const modeRaw = val(src, 5, 8);
+    info.analyzer_mode = MODE_MAP[modeRaw] || modeRaw;
+    info.freq_max = val(src, 6, 8);
+    info.freq_min = val(src, 7, 8);
+    const funitRaw = val(src, 8, 8);
+    info.freq_unit = FREQ_UNIT_MAP[funitRaw] || funitRaw;
+    info.lines_resolution = val(src, 9, 8);
+    info.avg_points = val(src, 10, 8);
+    const winRaw = val(src, 11, 8);
+    info.window_type = WINDOW_MAP[winRaw] || winRaw;
+    info.sensor_input_sens = val(src, 12, 8);
+    const sunitRaw = val(src, 13, 8);
+    info.sensor_input_unit = SENS_UNIT_MAP[sunitRaw] || sunitRaw;
+  } else {
+    info.analyzer_mode = val(src, 5, 8);
+    info.freq_max = val(src, 6, 8);
+    info.freq_min = val(src, 7, 8);
+    info.freq_unit = val(src, 8, 8);
+    info.lines_resolution = val(src, 9, 8);
+    info.avg_points = val(src, 10, 8);
+    info.window_type = val(src, 11, 8);
+    info.sensor_input_sens = val(src, 12, 8);
+    info.sensor_input_unit = val(src, 12, 9);
+  }
 
   // Test type detection (J4 header)
-  info.test_type = val(cert, 4, 10);
+  info.test_type = val(cert || src, 4, 10);
 
-  // Test parameters (column L-M, rows 5-8)
+  // Test parameters (column L-M, rows 5-8 on Cert sheet)
   info.test_params = {};
+  const paramSrc = cert || src;
   for (let r = 5; r <= 8; r++) {
-    const label = val(cert, r, 12);
-    const value = val(cert, r, 13);
+    const label = val(paramSrc, r, 12);
+    const value = val(paramSrc, r, 13);
     if (label && value) info.test_params[label] = value;
   }
 
   // Test Equipment
-  info.pvc_model = val(cert, 15, 3);
-  info.pvc_serial = val(cert, 15, 4);
-  info.pvc_cal_date = dateVal(cert, 15, 6);
-  info.pvc_sensitivity = num(cert, 15, 8);
-  info.pvc_sens_unit = val(cert, 15, 9);
-  info.pvc_tolerance = num(cert, 15, 10);
-  info.pvc_deviation = num(cert, 15, 12);
+  if (data) {
+    // Data sheet: PVC at row 16, Sensor at row 17; sensitivity at col G(7), unit at H(8), tolerance at K(11)
+    info.pvc_model = val(src, 16, 3);
+    info.pvc_serial = val(src, 16, 4);
+    info.pvc_cal_date = dateVal(src, 16, 6);
+    info.pvc_sensitivity = num(src, 16, 7);
+    info.pvc_sens_unit = val(src, 16, 8);
+    info.pvc_tolerance = num(src, 16, 11);
+    info.pvc_deviation = num(src, 16, 12);
 
-  info.sensor_model = val(cert, 16, 3);
-  info.sensor_serial = val(cert, 16, 4);
-  info.sensor_cal_date = dateVal(cert, 16, 6);
-  info.sensor_sensitivity = num(cert, 16, 8);
-  info.sensor_sens_unit = val(cert, 16, 9);
-  info.sensor_tolerance = num(cert, 16, 10);
-  info.sensor_deviation = num(cert, 16, 12);
+    info.sensor_model = val(src, 17, 3);
+    info.sensor_serial = val(src, 17, 4);
+    info.sensor_cal_date = dateVal(src, 17, 6);
+    info.sensor_sensitivity = num(src, 17, 7);
+    info.sensor_sens_unit = val(src, 17, 8);
+    info.sensor_tolerance = num(src, 17, 11);
+    info.sensor_deviation = num(src, 17, 12);
+  } else {
+    // Cert sheet: PVC at row 15, Sensor at row 16
+    info.pvc_model = val(src, 15, 3);
+    info.pvc_serial = val(src, 15, 4);
+    info.pvc_cal_date = dateVal(src, 15, 6);
+    info.pvc_sensitivity = num(src, 15, 8);
+    info.pvc_sens_unit = val(src, 15, 9);
+    info.pvc_tolerance = num(src, 15, 10);
+    info.pvc_deviation = num(src, 15, 12);
 
-  // Customer
-  info.customer = val(cert, 33, 7);
+    info.sensor_model = val(src, 16, 3);
+    info.sensor_serial = val(src, 16, 4);
+    info.sensor_cal_date = dateVal(src, 16, 6);
+    info.sensor_sensitivity = num(src, 16, 8);
+    info.sensor_sens_unit = val(src, 16, 9);
+    info.sensor_tolerance = num(src, 16, 10);
+    info.sensor_deviation = num(src, 16, 12);
+  }
 
-  // Note
-  info.note = val(cert, 41, 7);
+  // Customer & Note (literal values on Cert sheet)
+  info.customer = val(cert || src, 33, 7);
+  info.note = val(cert || src, 41, 7);
 
   return info;
 }

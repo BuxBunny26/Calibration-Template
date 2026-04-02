@@ -144,6 +144,12 @@ def detect_cert_type(wb):
                 if _val(ws, 5, 3) or _val(ws, 6, 3):
                     return tag
 
+    # Also check Vib Analyzer Data sheet (Cert sheet may have uncached formulas)
+    if "Vib Analyzer Data" in wb.sheetnames:
+        ws = wb["Vib Analyzer Data"]
+        if _val(ws, 5, 3) or _val(ws, 6, 3):
+            return "VIB"
+
     return "FR"  # Default
 
 
@@ -285,36 +291,61 @@ def read_slin_info(wb):
 
 def read_vib_info(wb):
     """Extract info from Vibration Analyzer certificate sheet."""
-    cert = wb["Vib Analyzer Cert"]
+    cert = wb["Vib Analyzer Cert"] if "Vib Analyzer Cert" in wb.sheetnames else None
     data = wb["Vib Analyzer Data"] if "Vib Analyzer Data" in wb.sheetnames else None
+
+    # Prefer Data sheet (has actual values); Cert has formulas that may lack cached results
+    src = data or cert
+
+    # Lookup tables for coded fields on Data sheet
+    MODE_MAP = {"1": "Spectra", "2": "Overall", "3": "Time waveform"}
+    FREQ_UNIT_MAP = {"1": "Hz", "2": "CPM"}
+    WINDOW_MAP = {"1": "Hanning", "2": "Hamming", "3": "Flattop", "4": "Uniform"}
+    SENS_UNIT_MAP = {"1": "mV/EU", "2": "V/EU"}
+
+    if data:
+        mode_raw = _val(src, 5, 8)
+        analyzer_mode = MODE_MAP.get(mode_raw, mode_raw)
+        funit_raw = _val(src, 8, 8)
+        freq_unit = FREQ_UNIT_MAP.get(funit_raw, funit_raw)
+        win_raw = _val(src, 11, 8)
+        window_type = WINDOW_MAP.get(win_raw, win_raw)
+    else:
+        analyzer_mode = _val(src, 5, 8)
+        freq_unit = _val(src, 8, 8)
+        window_type = _val(src, 11, 8)
 
     info = {
         "cert_type": "Vibration Analyzer Certification",
-        "manufacturer": _val(cert, 5, 3),
-        "model": _val(cert, 6, 3),
-        "serial": _val(cert, 7, 3),
+        "manufacturer": _val(src, 5, 3),
+        "model": _val(src, 6, 3),
+        "serial": _val(src, 7, 3),
         "id_number": "",
         "description": "Vibration Analyzer",
-        "cal_tech": _val(cert, 8, 3),
-        "cal_date": _date_val(cert, 9, 3),
-        "due_date": _date_val(cert, 10, 3),
-        "analyzer_mode": _val(cert, 5, 8),
-        "freq_max": _val(cert, 6, 8),
-        "freq_min": _val(cert, 7, 8),
-        "freq_unit": _val(cert, 8, 8),
-        "lines_of_resolution": _val(cert, 9, 8),
-        "averaging_points": _val(cert, 10, 8),
-        "window_type": _val(cert, 11, 8),
-        "sensor_sensitivity": _val(cert, 12, 8),
-        "customer": _val(cert, 32, 7),
+        "cal_tech": _val(src, 8, 3),
+        "cal_date": _date_val(src, 9, 3),
+        "due_date": _date_val(src, 10, 3),
+        "analyzer_mode": analyzer_mode,
+        "freq_max": _val(src, 6, 8),
+        "freq_min": _val(src, 7, 8),
+        "freq_unit": freq_unit,
+        "lines_of_resolution": _val(src, 9, 8),
+        "averaging_points": _val(src, 10, 8),
+        "window_type": window_type,
+        "sensor_sensitivity": _val(src, 12, 8),
+        "customer": _val(cert or src, 32, 7),
         "iso_method": "Back-to-Back Comparison per ISO 16063-21",
         "traceability": "NIST and PTB",
-        "technician": _val(cert, 8, 3),
+        "technician": _val(src, 8, 3),
     }
 
-    # Test equipment: PVC info
-    info["pvc_model"] = _val(cert, 15, 3)
-    info["pvc_serial"] = _val(cert, 15, 4)
+    # Test equipment: PVC info (Data: row 16, Cert: row 15)
+    if data:
+        info["pvc_model"] = _val(src, 16, 3)
+        info["pvc_serial"] = _val(src, 16, 4)
+    else:
+        info["pvc_model"] = _val(src, 15, 3)
+        info["pvc_serial"] = _val(src, 15, 4)
 
     # Fill defaults
     for key in ["temperature", "humidity", "as_found", "as_left",

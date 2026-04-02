@@ -88,10 +88,30 @@ function subSectionHeader(doc, text, y) {
   return y + 6;
 }
 
-function fieldRows(doc, fields, y) {
+function fieldRows(doc, fields, y, stacked) {
   const colW = CONTENT_W / 2;
   const labelW = colW * 0.42;
   const rowH = 5;
+
+  if (stacked) {
+    // Full-width rows: one field per row
+    const fullLabelW = CONTENT_W * 0.18;
+    for (let i = 0; i < fields.length; i++) {
+      doc.setDrawColor(230, 230, 230);
+      doc.line(MARGIN, y + rowH, MARGIN + CONTENT_W, y + rowH);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...BLACK);
+      doc.text(fields[i][0], MARGIN + 3, y + 3.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(String(fields[i][1] || ''), MARGIN + fullLabelW, y + 3.5);
+
+      y += rowH;
+    }
+    return y + 1;
+  }
 
   for (let i = 0; i < fields.length; i += 2) {
     // Draw light separator
@@ -216,12 +236,15 @@ export async function generateCoverPage(info) {
   let sensorLine = `Sensor M/N: ${info.sensor_model || ''}, S/N: ${info.sensor_serial || ''}`;
   if (info.sensor_cal_date) sensorLine += `, Cal: ${info.sensor_cal_date}`;
 
+  const pvcSens = `${info.pvc_sensitivity || ''} ${info.pvc_sens_unit || ''}`.trim();
+  const sensorSens = `${info.sensor_sensitivity || ''} ${info.sensor_sens_unit || ''}`.trim();
+
   y = fieldRows(doc, [
     ['PVC:', pvcLine],
-    ['Sensitivity:', `${info.pvc_sensitivity || ''} ${info.pvc_sens_unit || ''}`],
+    ['Sensitivity:', pvcSens],
     ['Sensor:', sensorLine],
-    ['Sensitivity:', `${info.sensor_sensitivity || ''} ${info.sensor_sens_unit || ''}`],
-  ], y);
+    ['Sensitivity:', sensorSens],
+  ], y, true);
 
   // Procedure
   y = sectionHeader(doc, 'PROCEDURE', y + 1);
