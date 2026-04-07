@@ -39,10 +39,12 @@ function drawHeader(doc, info) {
   doc.setTextColor(...BLACK);
   doc.text('ISO 16063-21  |  NMISA-AUV-2026-11287', PAGE_W - MARGIN, 15, { align: 'right' });
 
-  // QR code in header (between logo and right text)
+  // QR code in header (aligned with logo)
   if (info._qrBase64) {
-    const qrSize = 14;
-    const qrX = MARGIN + 22;
+    const logoH = 20;
+    const logoW = logoH * 488 / 511;
+    const qrSize = logoH;
+    const qrX = MARGIN + logoW + 2;
     const qrY = 2;
     doc.addImage(info._qrBase64, 'PNG', qrX, qrY, qrSize, qrSize);
     doc.setFont('helvetica', 'normal');
