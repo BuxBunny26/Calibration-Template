@@ -10,7 +10,10 @@ Page 2: Full calibration data tables with deviations
 
 import os
 import sys
+import io
 from datetime import datetime
+
+import qrcode
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -44,6 +47,7 @@ DARK_RED = colors.HexColor("#9C0006")
 
 # Logo path
 LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "WearCheck Logo.png")
+NMISA_QR_URL = "https://nmisa.microsoftcrmportals.com/QRCertificates/?data=NMISA-AUV-2026-11287"
 
 PAGE_W, PAGE_H = A4
 MARGIN = 15 * mm
@@ -524,6 +528,25 @@ def make_header_footer(info):
             PAGE_W - MARGIN, PAGE_H - 14.5 * mm,
             "ISO 16063-21  |  NMISA-AUV-2026-11287"
         )
+
+        # QR code — between logo and header text
+        try:
+            qr = qrcode.make(NMISA_QR_URL, box_size=10, border=0)
+            qr_buf = io.BytesIO()
+            qr.save(qr_buf, format='PNG')
+            qr_buf.seek(0)
+            qr_size = 14 * mm
+            qr_x = MARGIN + 22 * mm
+            qr_y = PAGE_H - MARGIN - qr_size
+            from reportlab.lib.utils import ImageReader
+            canvas_obj.drawImage(ImageReader(qr_buf), qr_x, qr_y,
+                                 width=qr_size, height=qr_size)
+            canvas_obj.setFont("Helvetica", 4.5)
+            canvas_obj.setFillColor(WEARCHECK_GREY)
+            canvas_obj.drawCentredString(qr_x + qr_size / 2, qr_y - 3 * mm,
+                                         "Scan to authenticate")
+        except Exception:
+            pass
 
         # Footer line — subtle grey
         canvas_obj.setStrokeColor(colors.lightgrey)

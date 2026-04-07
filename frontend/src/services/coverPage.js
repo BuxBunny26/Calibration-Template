@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import QRCode from 'qrcode';
 
 const RED = [194, 4, 11];
 const BLACK = [26, 26, 26];
@@ -37,6 +38,18 @@ function drawHeader(doc, info) {
   doc.setFontSize(6.5);
   doc.setTextColor(...BLACK);
   doc.text('ISO 16063-21  |  NMISA-AUV-2026-11287', PAGE_W - MARGIN, 15, { align: 'right' });
+
+  // QR code in header (between logo and right text)
+  if (info._qrBase64) {
+    const qrSize = 14;
+    const qrX = MARGIN + 22;
+    const qrY = 2;
+    doc.addImage(info._qrBase64, 'PNG', qrX, qrY, qrSize, qrSize);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(4.5);
+    doc.setTextColor(...GREY);
+    doc.text('Scan to authenticate', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' });
+  }
 
   // Footer
   const serial = info.serial || '';
@@ -155,6 +168,14 @@ export async function generateCoverPage(info) {
       reader.readAsDataURL(blob);
     });
   } catch { /* no logo */ }
+
+  // Generate QR code
+  try {
+    info._qrBase64 = await QRCode.toDataURL(
+      'https://nmisa.microsoftcrmportals.com/QRCertificates/?data=NMISA-AUV-2026-11287',
+      { width: 200, margin: 0, color: { dark: '#1A1A1A', light: '#FFFFFF' } }
+    );
+  } catch { /* no QR */ }
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
