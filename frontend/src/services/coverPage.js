@@ -41,10 +41,10 @@ function drawHeader(doc, info) {
   // Footer
   const serial = info.serial || '';
   const calDate = info.cal_date || '';
-  const certNum = serial ? `VIB-${serial}-${calDate}` : '\u2014';
   const mfr = info.manufacturer || '';
   const model = info.model || '';
   const genDateShort = new Date().toISOString().slice(0, 10);
+  const certNum = serial ? `VIB-${serial}-${genDateShort}` : '\u2014';
   const equipLine = `${mfr} ${model}  |  S/N: ${serial}  |  Cert: ${certNum}`;
 
   doc.setDrawColor(200, 200, 200);
@@ -177,8 +177,8 @@ export async function generateCoverPage(info) {
   // Certificate Information
   const serial = info.serial || '';
   const calDate = info.cal_date || '';
-  const certNum = serial ? `VIB-${serial}-${calDate}` : '\u2014';
   const now = new Date().toISOString().slice(0, 10);
+  const certNum = serial ? `VIB-${serial}-${now}` : '\u2014';
 
   y = sectionHeader(doc, 'CERTIFICATE INFORMATION', y);
   y = fieldRows(doc, [
