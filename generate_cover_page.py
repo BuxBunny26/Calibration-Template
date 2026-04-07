@@ -396,13 +396,15 @@ def make_header_footer(info):
     def header_footer(canvas_obj, doc):
         canvas_obj.saveState()
 
-        # Logo — top-left
+        # Logo — top-left (square logo ≈488×511px)
         if os.path.exists(LOGO_PATH):
             try:
+                logo_h = 18 * mm
+                logo_w = logo_h * (488 / 511)  # preserve native aspect ratio
                 canvas_obj.drawImage(
                     LOGO_PATH,
-                    2 * mm, PAGE_H - 22 * mm,
-                    width=60 * mm, height=21 * mm,
+                    2 * mm, PAGE_H - 2 * mm - logo_h,
+                    width=logo_w, height=logo_h,
                     preserveAspectRatio=True, mask='auto'
                 )
             except Exception:
@@ -548,8 +550,8 @@ def build_signature_table(info, styles):
          Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl)],
         # Row 3: spacer for signature
         ["", "", E, "", ""],
-        # Row 4: Date
-        [Paragraph(f"Date: {info.get('cal_date', '')}", styles["FieldValue"]),
+        # Row 4: Date (use report generation date, not calibration date)
+        [Paragraph(f"Date: {datetime.now().strftime('%d/%m/%Y')}", styles["FieldValue"]),
          "", E,
          Paragraph("Date:", styles["FieldValue"]),
          ""],

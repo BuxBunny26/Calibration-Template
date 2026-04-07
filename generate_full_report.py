@@ -421,7 +421,7 @@ def build_signature_table(info, styles):
         [Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl), E,
          Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl)],
         ["", "", E, "", ""],
-        [Paragraph(f"Date: {info.get('cal_date', '')}", styles["FieldValue"]),
+        [Paragraph(f"Date: {datetime.now().strftime('%d/%m/%Y')}", styles["FieldValue"]),
          "", E, Paragraph("Date:", styles["FieldValue"]), ""],
         [Paragraph("Date Signed", sig_lbl), Paragraph("", sig_lbl), E,
          Paragraph("Date Signed", sig_lbl), Paragraph("", sig_lbl)],
@@ -454,9 +454,11 @@ def make_header_footer(info):
         # Logo top-left
         if os.path.exists(LOGO_PATH):
             try:
+                logo_h = 18 * mm
+                logo_w = logo_h * (488 / 511)
                 canvas_obj.drawImage(
-                    LOGO_PATH, 2 * mm, PAGE_H - 22 * mm,
-                    width=60 * mm, height=21 * mm,
+                    LOGO_PATH, 2 * mm, PAGE_H - 2 * mm - logo_h,
+                    width=logo_w, height=logo_h,
                     preserveAspectRatio=True, mask='auto',
                 )
             except Exception:

@@ -309,10 +309,11 @@ export async function generateCoverPage(info) {
   y += 6;
 
   // Date lines
+  const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: '2-digit', day: '2-digit' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...BLACK);
-  doc.text(`Date: ${calDate}`, MARGIN + 3, y + 3);
+  doc.text(`Date: ${today}`, MARGIN + 3, y + 3);
   doc.text('Date:', MARGIN + blockW + 13, y + 3);
   y += 5;
 
