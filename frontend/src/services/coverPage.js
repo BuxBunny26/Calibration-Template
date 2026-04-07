@@ -45,7 +45,7 @@ function drawHeader(doc, info) {
   const mfr = info.manufacturer || '';
   const model = info.model || '';
   const genDateShort = new Date().toISOString().slice(0, 10);
-  const equipLine = `${mfr} ${model}  |  S/N: ${serial}  |  Cert: ${certNum}  |  Generated: ${genDateShort}`;
+  const equipLine = `${mfr} ${model}  |  S/N: ${serial}  |  Cert: ${certNum}`;
 
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.2);
