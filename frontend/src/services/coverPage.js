@@ -55,8 +55,7 @@ function drawHeader(doc, info) {
   doc.setTextColor(...BLACK);
   doc.text(equipLine, MARGIN, pageH - 10);
 
-  const now = new Date();
-  const genDate = now.toISOString().slice(0, 16).replace('T', ' ');
+  const genDate = new Date().toISOString().slice(0, 10);
   doc.text(`Generated: ${genDate}  |  Page ${doc.getCurrentPageInfo().pageNumber}`, PAGE_W - MARGIN, pageH - 10, { align: 'right' });
 
   doc.setFontSize(6);
