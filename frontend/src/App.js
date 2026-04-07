@@ -292,7 +292,6 @@ function App() {
             <polyline points="12 6 12 12 16 14"/>
           </svg>
           History
-          {history.length > 0 && <span className="badge">{history.length}</span>}
         </button>
       </nav>
 
