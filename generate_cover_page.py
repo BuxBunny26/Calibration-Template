@@ -396,14 +396,14 @@ def make_header_footer(info):
     def header_footer(canvas_obj, doc):
         canvas_obj.saveState()
 
-        # Logo — top-left (square logo ≈488×511px)
+        # Logo — top-left (native 488×511px, nearly square)
         if os.path.exists(LOGO_PATH):
             try:
-                logo_h = 18 * mm
-                logo_w = logo_h * (488 / 511)  # preserve native aspect ratio
+                logo_h = 20 * mm
+                logo_w = logo_h * 488 / 511
                 canvas_obj.drawImage(
                     LOGO_PATH,
-                    2 * mm, PAGE_H - 2 * mm - logo_h,
+                    MARGIN, PAGE_H - MARGIN - logo_h,
                     width=logo_w, height=logo_h,
                     preserveAspectRatio=True, mask='auto'
                 )

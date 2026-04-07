@@ -17,7 +17,9 @@ function drawHeader(doc, info) {
   // Try to draw logo (loaded as base64 before calling)
   if (info._logoBase64) {
     try {
-      doc.addImage(info._logoBase64, 'PNG', 2, 2, 60, 21);
+      const logoH = 20;
+      const logoW = logoH * 488 / 511;
+      doc.addImage(info._logoBase64, 'PNG', MARGIN, 2, logoW, logoH);
     } catch { /* skip logo if failed */ }
   }
 
