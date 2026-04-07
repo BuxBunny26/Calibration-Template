@@ -36,7 +36,7 @@ function drawHeader(doc, info) {
 
   doc.setFontSize(6.5);
   doc.setTextColor(...BLACK);
-  doc.text('ISO 16063-21  |  NMISA', PAGE_W - MARGIN, 15, { align: 'right' });
+  doc.text('ISO 16063-21  |  NMISA-AUV-2026-11287', PAGE_W - MARGIN, 15, { align: 'right' });
 
   // Footer
   const serial = info.serial || '';

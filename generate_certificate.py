@@ -522,7 +522,7 @@ def make_header_footer(info):
         canvas_obj.setFillColor(WEARCHECK_BLACK)
         canvas_obj.drawRightString(
             PAGE_W - MARGIN, PAGE_H - 14.5 * mm,
-            "ISO 16063-21  |  NMISA"
+            "ISO 16063-21  |  NMISA-AUV-2026-11287"
         )
 
         # Footer line — subtle grey
