@@ -44,7 +44,8 @@ function drawHeader(doc, info) {
   const certNum = serial ? `VIB-${serial}-${calDate}` : '\u2014';
   const mfr = info.manufacturer || '';
   const model = info.model || '';
-  const equipLine = `${mfr} ${model}  |  S/N: ${serial}  |  Cert: ${certNum}  |  Cal Date: ${calDate}`;
+  const genDateShort = new Date().toISOString().slice(0, 10);
+  const equipLine = `${mfr} ${model}  |  S/N: ${serial}  |  Cert: ${certNum}  |  Generated: ${genDateShort}`;
 
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.2);
