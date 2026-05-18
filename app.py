@@ -49,6 +49,14 @@ STORAGE_BUCKET = "calibration-files"
 sb = None
 if SUPABASE_URL and SUPABASE_KEY:
     sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+    # Auto-create the storage bucket if it doesn't exist
+    try:
+        existing = sb.storage.list_buckets()
+        bucket_names = [b.name for b in existing]
+        if STORAGE_BUCKET not in bucket_names:
+            sb.storage.create_bucket(STORAGE_BUCKET, options={"public": True})
+    except Exception as _bucket_err:
+        print(f"[WARN] Could not verify/create storage bucket: {_bucket_err}")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -92,10 +100,22 @@ def upload_to_storage(local_path, remote_path):
     if not sb:
         return None
     with open(local_path, "rb") as f:
-        content_type = "application/pdf" if remote_path.endswith(".pdf") else "application/octet-stream"
+        data = f.read()
+    content_type = "application/pdf" if remote_path.endswith(".pdf") else "application/octet-stream"
+    try:
         sb.storage.from_(STORAGE_BUCKET).upload(
-            remote_path, f.read(), {"content-type": content_type, "upsert": "true"}
+            remote_path, data, {"content-type": content_type, "upsert": "true"}
         )
+    except Exception as upload_err:
+        err_str = str(upload_err)
+        if "Bucket not found" in err_str or "not found" in err_str.lower():
+            # Bucket may not exist yet — create it and retry
+            sb.storage.create_bucket(STORAGE_BUCKET, options={"public": True})
+            sb.storage.from_(STORAGE_BUCKET).upload(
+                remote_path, data, {"content-type": content_type, "upsert": "true"}
+            )
+        else:
+            raise
     res = sb.storage.from_(STORAGE_BUCKET).get_public_url(remote_path)
     return res
 
