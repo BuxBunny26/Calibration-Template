@@ -33,6 +33,8 @@ from reportlab.graphics import renderPDF
 import openpyxl
 from datetime import date, time as dt_time
 
+from signature_utils import get_signature_image
+
 # ── Brand Colors ──────────────────────────────────────────────────────────
 
 WEARCHECK_RED = colors.HexColor("#C2040B")
@@ -742,6 +744,11 @@ def build_cal_data_table(data_rows, title, styles):
 
 def build_signature_table(info, styles):
     """Flat authorisation table with gap columns so lines don't merge."""
+    # Approver is always Eddie Jnr (date left blank so signatory fills it in)
+    info = {**info,
+            "appr_name": "Eddie", "appr_surname": "Jnr",
+            "appr_title": info.get("appr_title", "") or "",
+            "appr_date": ""}
     sig_lbl = ParagraphStyle("sig_lbl", parent=styles["SmallItalic"], alignment=TA_LEFT)
     total_w = PAGE_W - 2 * MARGIN
     gap = 4 * mm
@@ -768,8 +775,10 @@ def build_signature_table(info, styles):
         [Paragraph("Name & Surname", sig_lbl), Paragraph("Title / Designation", sig_lbl), E,
          Paragraph("Name & Surname", sig_lbl), Paragraph("Title / Designation", sig_lbl), E,
          Paragraph("Name & Surname", sig_lbl), Paragraph("Title / Designation", sig_lbl)],
-        # Row 3: spacer for signature area
-        ["", "", E, "", "", E, "", ""],
+        # Row 3: signature images (looked up by name) sit above the line in row 4
+        [get_signature_image(f"{info['tech_name']} {info['tech_surname']}"), "", E,
+         get_signature_image(f"{info['rev_name']} {info['rev_surname']}"),  "", E,
+         get_signature_image(f"{info['appr_name']} {info['appr_surname']}"), ""],
         # Row 4: Signature | Date Signed
         ["", Paragraph(str(info['tech_date']), styles["FieldValue"]), E,
          "", Paragraph(str(info['rev_date']), styles["FieldValue"]), E,
@@ -780,7 +789,7 @@ def build_signature_table(info, styles):
          Paragraph("Signature", sig_lbl), Paragraph("Date Signed", sig_lbl)],
     ]
 
-    t = Table(sig_data, colWidths=col_widths, rowHeights=[None, None, None, 8 * mm, None, None])
+    t = Table(sig_data, colWidths=col_widths, rowHeights=[None, None, None, None, None, None])
     t.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
         ("TOPPADDING", (0, 0), (-1, -1), 1.5),

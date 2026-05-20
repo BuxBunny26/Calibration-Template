@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import QRCode from 'qrcode';
+import { getSignature } from './signatures';
 
 const RED = [194, 4, 11];
 const BLACK = [26, 26, 26];
@@ -160,6 +161,13 @@ function fieldRows(doc, fields, y, stacked) {
 }
 
 export async function generateCoverPage(info) {
+  // Approver is always Eddie Jnr
+  info.approver = 'Eddie Jnr';
+
+  // Pre-load signature images so addImage() is synchronous below.
+  const techSig = await getSignature(info.cal_tech || '');
+  const approverSig = await getSignature(info.approver);
+
   // Load logo
   try {
     const resp = await fetch('/WearCheck Logo.png');
@@ -315,13 +323,29 @@ export async function generateCoverPage(info) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.text(info.cal_tech || '', MARGIN + 3, y + 3);
+  doc.text(info.approver || '', MARGIN + blockW + 13, y + 3);
   y += 5;
+
+  // Signature images (drawn just above the signature line, in the right
+  // half of each block where the "Signature" sub-label sits).
+  const sigLineY = y + 8;
+  const drawSig = (sig, xStart) => {
+    if (!sig) return;
+    // Right half of the block; centre the image horizontally over it.
+    const halfX = xStart + blockW * 0.55;
+    const halfW = blockW * 0.45;
+    const x = halfX + (halfW - sig.width) / 2;
+    const ySig = sigLineY - sig.height - 0.5;
+    try { doc.addImage(sig.dataUrl, 'PNG', x, ySig, sig.width, sig.height); } catch {}
+  };
+  drawSig(techSig, MARGIN + 3);
+  drawSig(approverSig, MARGIN + blockW + 13);
 
   // Signature lines
   doc.setDrawColor(...BLACK);
   doc.setLineWidth(0.3);
-  doc.line(MARGIN + 3, y + 8, MARGIN + 3 + blockW, y + 8);
-  doc.line(MARGIN + blockW + 13, y + 8, MARGIN + blockW + 13 + blockW, y + 8);
+  doc.line(MARGIN + 3, sigLineY, MARGIN + 3 + blockW, sigLineY);
+  doc.line(MARGIN + blockW + 13, sigLineY, MARGIN + blockW + 13 + blockW, sigLineY);
   y += 10;
 
   doc.setFont('helvetica', 'italic');

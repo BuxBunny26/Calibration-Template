@@ -42,6 +42,8 @@ from reportlab.platypus.flowables import KeepTogether
 import openpyxl
 from PyPDF2 import PdfReader, PdfWriter
 
+from signature_utils import get_signature_image
+
 # ── Brand Colors ─────────────────────────────────────────────────────────
 
 WEARCHECK_RED   = colors.HexColor("#C2040B")
@@ -409,6 +411,8 @@ def build_field_table_stacked(fields, styles):
 
 
 def build_signature_table(info, styles):
+    # Approver is always Eddie Jnr
+    info = {**info, "approver": "Eddie Jnr"}
     sig_lbl = ParagraphStyle("sig_lbl", parent=styles["SmallItalic"], alignment=TA_LEFT)
     total_w = PAGE_W - 2 * MARGIN
     gap = 4 * mm
@@ -422,10 +426,11 @@ def build_signature_table(info, styles):
         [Paragraph("<b>Calibrated By:</b>", styles["FieldLabel"]), "", E,
          Paragraph("<b>Approved By:</b>", styles["FieldLabel"]), ""],
         [Paragraph(info.get("cal_tech", ""), styles["FieldValue"]),
-         "", E, Paragraph("", styles["FieldValue"]), ""],
+         "", E, Paragraph(info.get("approver", ""), styles["FieldValue"]), ""],
         [Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl), E,
          Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl)],
-        ["", "", E, "", ""],
+        ["", get_signature_image(info.get("cal_tech", "")), E,
+         "", get_signature_image(info.get("approver", ""))],
         [Paragraph(f"Date: {datetime.now().strftime('%d/%m/%Y')}", styles["FieldValue"]),
          "", E, Paragraph("Date:", styles["FieldValue"]), ""],
         [Paragraph("Date Signed", sig_lbl), Paragraph("", sig_lbl), E,
@@ -433,7 +438,7 @@ def build_signature_table(info, styles):
     ]
 
     t = Table(sig_data, colWidths=col_widths,
-              rowHeights=[None, None, None, 10 * mm, None, None])
+              rowHeights=[None, None, None, None, None, None])
     t.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
         ("TOPPADDING", (0, 0), (-1, -1), 1.5),

@@ -34,6 +34,8 @@ from reportlab.platypus.flowables import KeepTogether
 
 import openpyxl
 
+from signature_utils import get_signature_image
+
 # ── Brand Colors (identical to generate_certificate.py) ──────────────────
 
 WEARCHECK_RED = colors.HexColor("#C2040B")
@@ -549,6 +551,8 @@ def build_field_table(fields, styles):
 
 def build_signature_table(info, styles):
     """Signature table — matching TEST_Certificate.pdf layout."""
+    # Approver is always Eddie Jnr
+    info = {**info, "approval": "Eddie Jnr"}
     sig_lbl = ParagraphStyle("sig_lbl", parent=styles["SmallItalic"], alignment=TA_LEFT)
     total_w = PAGE_W - 2 * MARGIN
     gap = 4 * mm
@@ -572,8 +576,9 @@ def build_signature_table(info, styles):
         # Row 2: Sub-labels
         [Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl), E,
          Paragraph("Name", sig_lbl), Paragraph("Signature", sig_lbl)],
-        # Row 3: spacer for signature
-        ["", "", E, "", ""],
+        # Row 3: signature images (looked up by name)
+        ["", get_signature_image(info.get("technician", "")), E,
+         "", get_signature_image(info.get("approval", ""))],
         # Row 4: Date (use report generation date, not calibration date)
         [Paragraph(f"Date: {datetime.now().strftime('%d/%m/%Y')}", styles["FieldValue"]),
          "", E,
@@ -585,7 +590,7 @@ def build_signature_table(info, styles):
     ]
 
     t = Table(sig_data, colWidths=col_widths,
-              rowHeights=[None, None, None, 10 * mm, None, None])
+              rowHeights=[None, None, None, None, None, None])
     t.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
         ("TOPPADDING", (0, 0), (-1, -1), 1.5),
