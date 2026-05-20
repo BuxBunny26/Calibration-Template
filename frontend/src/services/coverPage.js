@@ -161,8 +161,9 @@ function fieldRows(doc, fields, y, stacked) {
 }
 
 export async function generateCoverPage(info) {
-  // Approver is always Eddie Jnr
-  info.approver = 'Eddie Jnr';
+  // Hardcoded calibrator and approver
+  info.cal_tech = 'Andrew Robb';
+  info.approver = 'Edward Pieterse';
 
   // Pre-load signature images so addImage() is synchronous below.
   const techSig = await getSignature(info.cal_tech || '');
@@ -363,7 +364,7 @@ export async function generateCoverPage(info) {
   doc.setFontSize(8);
   doc.setTextColor(...BLACK);
   doc.text(`Date: ${today}`, MARGIN + 3, y + 3);
-  doc.text('Date:', MARGIN + blockW + 13, y + 3);
+  doc.text(`Date: ${today}`, MARGIN + blockW + 13, y + 3);
   y += 5;
 
   doc.setDrawColor(...BLACK);

@@ -7,10 +7,12 @@ const SIGNATURE_MAP = {
   'andrew robb':  'Andrew_Robb_Signature-removebg-preview.png',
   'andrew':       'Andrew_Robb_Signature-removebg-preview.png',
   'robb':         'Andrew_Robb_Signature-removebg-preview.png',
-  'edward jnr':   'Edward_Jnr_Signature-removebg-preview.png',
-  'edward':       'Edward_Jnr_Signature-removebg-preview.png',
-  'eddie jnr':    'Edward_Jnr_Signature-removebg-preview.png',
-  'eddie':        'Edward_Jnr_Signature-removebg-preview.png',
+  'edward jnr':       'Edward_Jnr_Signature-removebg-preview.png',
+  'edward':           'Edward_Jnr_Signature-removebg-preview.png',
+  'eddie jnr':        'Edward_Jnr_Signature-removebg-preview.png',
+  'eddie':            'Edward_Jnr_Signature-removebg-preview.png',
+  'edward pieterse':  'Edward_Jnr_Signature-removebg-preview.png',
+  'pieterse':         'Edward_Jnr_Signature-removebg-preview.png',
 };
 
 const cache = {};
