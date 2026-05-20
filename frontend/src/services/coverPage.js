@@ -166,8 +166,8 @@ export async function generateCoverPage(info) {
   info.approver = 'Edward Pieterse';
 
   // Pre-load signature images so addImage() is synchronous below.
-  const techSig = await getSignature(info.cal_tech || '');
-  const approverSig = await getSignature(info.approver);
+  const techSig = await getSignature(info.cal_tech || '', 60, 20);
+  const approverSig = await getSignature(info.approver, 60, 20);
 
   // Load logo
   try {
