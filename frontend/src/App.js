@@ -4,9 +4,11 @@ import { processGroup } from './services/generateReport';
 import Header from './components/Header';
 import FileUpload from './components/FileUpload';
 import History from './components/History';
+import Login from './components/Login';
 import './App.css';
 
 function App() {
+  const [session, setSession] = useState(undefined); // undefined = loading, null = logged out
   const [files, setFiles] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
@@ -18,6 +20,16 @@ function App() {
   const [generatingProgress, setGeneratingProgress] = useState(null);
   const [toast, setToast] = useState(null);
   const [supabaseOnline, setSupabaseOnline] = useState(supabaseConfigured);
+
+  // Auth: listen to session changes
+  useEffect(() => {
+    if (!supabaseConfigured) { setSession(null); return; }
+    supabase.auth.getSession().then(({ data: { session: s } }) => setSession(s ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -40,6 +52,23 @@ function App() {
 
   useEffect(() => {
     loadHistory();
+  }, [loadHistory]);
+
+  // Refresh history when switching to the history tab
+  useEffect(() => {
+    if (activeTab === 'history') loadHistory();
+  }, [activeTab, loadHistory]);
+
+  // Real-time subscription for live updates
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    const channel = supabase
+      .channel('certificate_jobs_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'certificate_jobs' }, () => {
+        loadHistory();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [loadHistory]);
 
   const extractGroupKey = (filename) => {
@@ -251,9 +280,27 @@ function App() {
     }
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // Auth loading state
+  if (session === undefined) {
+    return (
+      <div className="auth-loading">
+        <span className="login-spinner" />
+      </div>
+    );
+  }
+
+  // Not authenticated
+  if (!session) {
+    return <Login />;
+  }
+
   return (
     <div className="app">
-      <Header darkMode={darkMode} onToggleDark={() => setDarkMode(d => !d)} />
+      <Header darkMode={darkMode} onToggleDark={() => setDarkMode(d => !d)} user={session.user} onSignOut={handleSignOut} />
 
       {!supabaseOnline && (
         <div className="offline-banner">

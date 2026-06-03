@@ -10,4 +10,13 @@ export const supabase = supabaseConfigured
   : {
       from: () => ({ select: () => ({ order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }),
       storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: null } }) }) },
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: null } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signInWithOtp: () => Promise.resolve({ error: { message: 'Supabase not configured.' } }),
+        verifyOtp: () => Promise.resolve({ error: { message: 'Supabase not configured.' } }),
+        signOut: () => Promise.resolve({}),
+      },
+      channel: () => ({ on: () => ({ subscribe: () => {} }) }),
+      removeChannel: () => {},
     };
