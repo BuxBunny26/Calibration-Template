@@ -1162,6 +1162,14 @@ body {
   color: var(--success);
 }
 
+.login-sent-notice--large {
+  padding: 16px;
+  gap: 14px;
+  align-items: center;
+}
+
+.login-sent-notice--large svg { flex-shrink: 0; }
+
 .login-sent-notice svg { flex-shrink: 0; margin-top: 1px; }
 
 .login-sent-notice div {
@@ -1171,7 +1179,7 @@ body {
 }
 
 .login-sent-notice strong {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -1179,6 +1187,21 @@ body {
   font-size: 12px;
   color: var(--wc-grey);
 }
+
+.login-sent-email {
+  font-weight: 600 !important;
+  color: var(--wc-black) !important;
+  font-size: 13px !important;
+}
+
+.login-instructions {
+  font-size: 13px;
+  color: var(--wc-grey);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.login-instructions strong { color: var(--wc-black); }
 
 .login-resend-row {
   display: flex;
@@ -1213,6 +1236,13 @@ body {
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+}
+
+.login-spinner--sm {
+  width: 12px;
+  height: 12px;
+  border-color: rgba(0,0,0,0.2);
+  border-top-color: var(--wc-grey);
 }
 
 .auth-loading .login-spinner {
