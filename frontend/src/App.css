@@ -1252,5 +1252,41 @@ body {
   height: 36px;
 }
 
+.login-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-link {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--wc-red);
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+.login-link:hover { opacity: 0.7; }
+
+.login-input--pw {
+  padding-right: 42px;
+}
+
+.login-pw-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--wc-grey);
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.15s;
+}
+.login-pw-toggle:hover { color: var(--wc-black); }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
