@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 
 function formatDate(dateStr) {
@@ -15,6 +15,10 @@ function History({ jobs, loading }) {
   const [searchModel, setSearchModel] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // Tracks whether each job's stored file actually exists in Supabase Storage:
+  // undefined = not checked yet, true = confirmed present, false = confirmed missing.
+  const [fileExists, setFileExists] = useState({});
+  const checkedRef = useRef(new Set());
 
   const models = useMemo(() => {
     if (!jobs) return [];
@@ -86,6 +90,24 @@ function History({ jobs, loading }) {
       .getPublicUrl(job.output_file_path);
     return data?.publicUrl;
   };
+
+  // Verify each completed job's file is actually reachable in storage, so we
+  // can show a clear "File unavailable" message instead of a broken link that
+  // 404s with a raw storage error page (past bug: records could be saved even
+  // when the upload silently failed).
+  useEffect(() => {
+    if (!jobs) return;
+    jobs.forEach(job => {
+      if (job.status !== 'completed' || !job.output_file_path) return;
+      if (checkedRef.current.has(job.id)) return;
+      checkedRef.current.add(job.id);
+      const url = getDownloadUrl(job);
+      if (!url) return;
+      fetch(url, { method: 'HEAD' })
+        .then(res => setFileExists(prev => ({ ...prev, [job.id]: res.ok })))
+        .catch(() => setFileExists(prev => ({ ...prev, [job.id]: false })));
+    });
+  }, [jobs]);
 
   return (
     <div className="history-section">
@@ -174,7 +196,7 @@ function History({ jobs, loading }) {
                 )}
               </div>
               <div className="job-actions">
-                {job.status === 'completed' && downloadUrl ? (
+                {job.status === 'completed' && downloadUrl && fileExists[job.id] !== false ? (
                   <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="download-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -183,7 +205,7 @@ function History({ jobs, loading }) {
                     Download
                   </a>
                 ) : job.status === 'completed' && (
-                  <span className="download-unavailable">
+                  <span className="download-unavailable" title="This certificate's file is missing from storage and cannot be re-downloaded. Regenerate it from the original source files if you still need a copy.">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>

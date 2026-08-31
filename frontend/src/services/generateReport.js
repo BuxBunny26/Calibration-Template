@@ -107,6 +107,7 @@ export async function processGroup(groupFiles) {
 
   // Upload to Supabase if configured
   let downloadUrl = null;
+  let uploadSucceeded = false;
   if (supabaseConfigured) {
     const remotePath = `certificates/${jobId}/${outputName}`;
 
@@ -124,12 +125,16 @@ export async function processGroup(groupFiles) {
           .from('calibration-files')
           .getPublicUrl(remotePath);
         downloadUrl = data?.publicUrl || null;
+        uploadSucceeded = true;
+      } else {
+        console.warn('Supabase storage upload failed:', uploadErr);
       }
     } catch (e) {
       console.warn('Supabase storage upload failed:', e);
     }
 
-    // Save job record (even if storage failed)
+    // Save job record (even if storage failed) — only record the path if the
+    // upload actually succeeded, otherwise History would show a broken link.
     try {
       await supabase.from('certificate_jobs').upsert({
         id: jobId,
@@ -142,8 +147,9 @@ export async function processGroup(groupFiles) {
         calibration_tech: merged.cal_tech || '',
         customer: merged.customer || '',
         input_files: JSON.stringify(groupFiles.map(f => ({ name: f.name, size: f.size }))),
-        output_file_path: remotePath,
+        output_file_path: uploadSucceeded ? remotePath : null,
         output_file_name: outputName,
+        error_message: uploadSucceeded ? null : 'File generated but cloud upload failed; not available for re-download.',
         completed_at: new Date().toISOString(),
       });
     } catch (e) {
