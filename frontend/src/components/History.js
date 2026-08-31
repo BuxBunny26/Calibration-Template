@@ -56,6 +56,32 @@ function History({ jobs, loading }) {
     setDateTo('');
   };
 
+  const getDownloadUrl = (job) => {
+    if (!job.output_file_path) return null;
+    const { data } = supabase.storage
+      .from('calibration-files')
+      .getPublicUrl(job.output_file_path);
+    return data?.publicUrl;
+  };
+
+  // Verify each completed job's file is actually reachable in storage, so we
+  // can show a clear "File unavailable" message instead of a broken link that
+  // 404s with a raw storage error page (past bug: records could be saved even
+  // when the upload silently failed).
+  useEffect(() => {
+    if (!jobs) return;
+    jobs.forEach(job => {
+      if (job.status !== 'completed' || !job.output_file_path) return;
+      if (checkedRef.current.has(job.id)) return;
+      checkedRef.current.add(job.id);
+      const url = getDownloadUrl(job);
+      if (!url) return;
+      fetch(url, { method: 'HEAD' })
+        .then(res => setFileExists(prev => ({ ...prev, [job.id]: res.ok })))
+        .catch(() => setFileExists(prev => ({ ...prev, [job.id]: false })));
+    });
+  }, [jobs]);
+
   if (loading) {
     return (
       <div className="loading-skeleton">
@@ -82,32 +108,6 @@ function History({ jobs, loading }) {
       </div>
     );
   }
-
-  const getDownloadUrl = (job) => {
-    if (!job.output_file_path) return null;
-    const { data } = supabase.storage
-      .from('calibration-files')
-      .getPublicUrl(job.output_file_path);
-    return data?.publicUrl;
-  };
-
-  // Verify each completed job's file is actually reachable in storage, so we
-  // can show a clear "File unavailable" message instead of a broken link that
-  // 404s with a raw storage error page (past bug: records could be saved even
-  // when the upload silently failed).
-  useEffect(() => {
-    if (!jobs) return;
-    jobs.forEach(job => {
-      if (job.status !== 'completed' || !job.output_file_path) return;
-      if (checkedRef.current.has(job.id)) return;
-      checkedRef.current.add(job.id);
-      const url = getDownloadUrl(job);
-      if (!url) return;
-      fetch(url, { method: 'HEAD' })
-        .then(res => setFileExists(prev => ({ ...prev, [job.id]: res.ok })))
-        .catch(() => setFileExists(prev => ({ ...prev, [job.id]: false })));
-    });
-  }, [jobs]);
 
   return (
     <div className="history-section">
